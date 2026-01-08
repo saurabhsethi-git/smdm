@@ -1,0 +1,18 @@
+running app
+	./venv/Scripts/activate.bat
+	./venv/Scripts/python.exe -m uvicorn src.main:app --reload
+
+    python -m compileall src -q
+db password
+	AVNS_vT7E3n5x9mZnvQMZLuu
+docker
+	docker exec -it redis redis-cli
+
+
+
+useful
+	show python package
+		python -m pip show python-dotenv
+		
+		
+2:32

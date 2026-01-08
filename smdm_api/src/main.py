@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.endpoints import router as api_router
+from src.api.super_repo import router as super_repo_router
+from src.api.repo import router as repo_router
+from src.api.db import router as db_router
 from src.db.database import connect_to_db, disconnect_from_db
 
 app = FastAPI()
@@ -21,4 +23,6 @@ async def startup():
 async def shutdown():
     disconnect_from_db()
 
-app.include_router(api_router)
+app.include_router(super_repo_router)
+app.include_router(repo_router)
+app.include_router(db_router)
