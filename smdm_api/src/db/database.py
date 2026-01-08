@@ -2,7 +2,6 @@ from sqlalchemy import create_engine, MetaData, Table, Column, String, Boolean
 from sqlalchemy.exc import SQLAlchemyError
 import os
 
-#DATABASE_URL = "postgresql://avnadmin:AVNS_vT7E3n5x9mZnvQMZLuu@pgtest-sourabh444-1437.e.aivencloud.com:15561/smdm"  # Update with your database URL
 DATABASE_URL = os.getenv("SUPER_REPO")
 
 ENGINE = None
