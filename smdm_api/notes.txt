@@ -1,8 +1,7 @@
 running app
 	./venv/Scripts/activate.bat
 	./venv/Scripts/python.exe -m uvicorn src.main:app --reload
-db password
-	AVNS_vT7E3n5x9mZnvQMZLuu
+
 docker
 	docker exec -it redis redis-cli
 
