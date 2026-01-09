@@ -95,6 +95,42 @@ async def create_app_details(request: Request):
         super_repo_session.close()
 
 
+@router.put("/update/app/{repo_id}")
+async def update_app_details(repo_id: str, request: Request):
+    payload = await request.json()
+    if not isinstance(payload, dict) or not payload:
+        raise HTTPException(status_code=400, detail="JSON body must be an object with column:value pairs")
+
+    super_repo_session = get_super_repo_session()
+    try:
+        # Check if repo_id exists
+        check_query = text("SELECT repo_id FROM sy_repo_details WHERE repo_id = :repo_id")
+        result = super_repo_session.execute(check_query, {"repo_id": repo_id}).fetchone()
+        if not result:
+            raise HTTPException(status_code=404, detail=f"No app found with repo_id: {repo_id}")
+
+        # Build UPDATE query
+        update_fields = [f"{k} = :{k}" for k in payload.keys()]
+        update_clause = ", ".join(update_fields)
+        update_query = text(f"UPDATE sy_repo_details SET {update_clause}, last_updated = CURRENT_TIMESTAMP WHERE repo_id = :repo_id")
+        
+        params = payload.copy()
+        params["repo_id"] = repo_id
+        
+        super_repo_session.execute(update_query, params)
+        super_repo_session.commit()
+
+        cache_delete_pattern("app_list:*")
+        cache_delete_pattern(f"repo_status:*")
+        
+        return {"status": 200, "message": "App record updated successfully", "repo_id": repo_id}
+    except SQLAlchemyError as e:
+        super_repo_session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        super_repo_session.close()
+
+
 @router.post("/{app}/setuprepo/")
 async def setup_repo(app: str):
     source_engine = create_engine((get_repo_db_session.__module__ and "") or "")

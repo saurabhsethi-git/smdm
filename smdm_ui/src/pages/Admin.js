@@ -8,10 +8,14 @@ function Admin() {
   const [error, setError] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [repoInput, setRepoInput] = useState('');
   const [appInput, setAppInput] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
+  const [updateFormValues, setUpdateFormValues] = useState({});
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState(null);
 
   // Fetch apps list
   useEffect(() => {
@@ -42,6 +46,7 @@ function Admin() {
   const handleAppSelect = (app) => {
     setSelectedApp(app);
     setShowCreateForm(false);
+    setShowUpdateForm(false);
   };
 
   const handleCreateSubmit = async (e) => {
@@ -76,6 +81,61 @@ function Admin() {
     } catch (err) {
       setCreateError(err.message || String(err));
       setCreating(false);
+    }
+  };
+
+  const handleUpdateClick = () => {
+    if (selectedApp) {
+      // Initialize form with app details (excluding repo_id)
+      const formValues = {};
+      Object.entries(selectedApp).forEach(([key, value]) => {
+        if (key !== 'repo_id' && key !== 'last_updated') {
+          formValues[key] = value === null ? '' : String(value);
+        }
+      });
+      setUpdateFormValues(formValues);
+      setShowUpdateForm(true);
+    }
+  };
+
+  const handleUpdateFormChange = (field, value) => {
+    setUpdateFormValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleUpdateSubmit = async (e) => {
+    e.preventDefault();
+    setUpdateError(null);
+    if (!selectedApp?.repo_id) {
+      setUpdateError('Missing repo_id');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const res = await fetch(`http://localhost:8000/update/app/${encodeURIComponent(selectedApp.repo_id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(updateFormValues)
+      });
+
+      const text = await res.text();
+      if (!res.ok) {
+        setUpdateError(text || `HTTP ${res.status}`);
+        setUpdating(false);
+        return;
+      }
+
+      // Success: refresh apps list
+      const updatedApp = { ...selectedApp, ...updateFormValues };
+      setSelectedApp(updatedApp);
+      setApps((prev) => 
+        prev.map((app) => app.repo_id === selectedApp.repo_id ? updatedApp : app)
+      );
+      setShowUpdateForm(false);
+    } catch (err) {
+      setUpdateError(err.message || String(err));
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -133,30 +193,65 @@ function Admin() {
         </div>
       </aside>
 
-      {/* Right Content - App Details / Create Form */}
+      {/* Right Content - App Details / Create Form / Update Form */}
       <main style={{ flex: 1, marginTop: 60, padding: 24, overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h2 style={{ margin: 0 }}>{selectedApp ? 'App Details' : 'Select an app or create new'}</h2>
-          <button
-            onClick={() => {
-              setShowCreateForm((s) => !s);
-              setSelectedApp(null);
-              setRepoInput('');
-              setAppInput('');
-              setCreateError(null);
-            }}
-            style={{
-              padding: '8px 12px',
-              background: showCreateForm ? '#6c757d' : '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontWeight: '600'
-            }}
-          >
-            {showCreateForm ? 'Close' : '+ Create New App'}
-          </button>
+          <h2 style={{ margin: 0 }}>{selectedApp && !showCreateForm ? 'App Details' : 'Select an app or create new'}</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {selectedApp && !showCreateForm && (
+              <>
+                <button
+                  onClick={handleUpdateClick}
+                  style={{
+                    padding: '8px 12px',
+                    background: '#17a2b8',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  ✎ Update
+                </button>
+                <button
+                  onClick={() => navigate(`/setup-repo/${encodeURIComponent(selectedApp.repo_name)}`)}
+                  style={{
+                    padding: '8px 12px',
+                    background: '#ffc107',
+                    color: '#333',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  ⚙️ Setup
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => {
+                setShowCreateForm((s) => !s);
+                setShowUpdateForm(false);
+                setSelectedApp(null);
+                setRepoInput('');
+                setAppInput('');
+                setCreateError(null);
+              }}
+              style={{
+                padding: '8px 12px',
+                background: showCreateForm ? '#6c757d' : '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              {showCreateForm ? 'Close' : '+ Create New App'}
+            </button>
+          </div>
         </div>
 
         {/* Create App Form */}
@@ -217,26 +312,90 @@ function Admin() {
           </div>
         )}
 
-        {/* App Details */}
-        {selectedApp && !showCreateForm && (
-          <div style={{ background: 'white', padding: 24, borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {/* Update App Form */}
+        {showUpdateForm && selectedApp && (
+          <div style={{ background: 'white', padding: 24, borderRadius: 8, marginBottom: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0 }}>App Details</h3>
+              <h3 style={{ margin: 0 }}>Update App</h3>
               <button
-                onClick={() => navigate(`/setup-repo/${encodeURIComponent(selectedApp.repo_name)}`)}
+                onClick={() => setShowUpdateForm(false)}
                 style={{
                   padding: '8px 12px',
-                  background: '#ffc107',
-                  color: '#333',
+                  background: '#6c757d',
+                  color: 'white',
                   border: 'none',
                   borderRadius: 6,
                   cursor: 'pointer',
                   fontWeight: '600'
                 }}
               >
-                ⚙️ Setup
+                ← Back
               </button>
             </div>
+            <form onSubmit={handleUpdateSubmit}>
+              {updateError && <div style={{ color: 'red', marginBottom: 12 }}>{updateError}</div>}
+              {Object.entries(updateFormValues).map(([field, value]) => (
+                <div key={field} style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>
+                    {field.replace(/_/g, ' ')}
+                  </label>
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => handleUpdateFormChange(field, e.target.value)}
+                    disabled={field === 'repo_id'}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: 6,
+                      border: '1px solid #ddd',
+                      boxSizing: 'border-box',
+                      background: field === 'repo_id' ? '#f3f3f3' : 'white'
+                    }}
+                  />
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="submit"
+                  disabled={updating}
+                  style={{
+                    padding: '10px 16px',
+                    background: '#17a2b8',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: updating ? 'not-allowed' : 'pointer',
+                    fontWeight: '600',
+                    opacity: updating ? 0.7 : 1
+                  }}
+                >
+                  {updating ? 'Updating...' : 'Update App'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowUpdateForm(false)}
+                  style={{
+                    padding: '10px 16px',
+                    background: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* App Details */}
+        {selectedApp && !showCreateForm && !showUpdateForm && (
+          <div style={{ background: 'white', padding: 24, borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <h3 style={{ marginTop: 0 }}>Details</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
                 {Object.entries(selectedApp).map(([key, value]) => (

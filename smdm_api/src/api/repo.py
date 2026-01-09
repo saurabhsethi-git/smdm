@@ -112,9 +112,10 @@ async def get_entity_fields_repo(entity: str, app: str):
 
 
 @router.put("/{app}/updrepoentity/{table_name}/{pk_name}/{pk_value}")
-async def update_repo_record(table_name: str, pk_name: str, pk_value: str, request: Request = None, app: str = None):
+async def update_repo_record(table_name: str, pk_name: str, pk_value: int, request: Request = None, app: str = None):
     # This endpoint updates rows in a repo DB table
-    session = get_repo_db_session(app)
+    repo_db = app + "_repo"
+    session = get_repo_db_session(repo_db)
     try:
         data = await request.json()
         if not data:
@@ -125,6 +126,8 @@ async def update_repo_record(table_name: str, pk_name: str, pk_value: str, reque
         )
         params = data.copy()
         params["pk_value"] = pk_value
+        print(update_query)
+        print(params)
         result = session.execute(update_query, params)
         session.commit()
 
@@ -137,6 +140,7 @@ async def update_repo_record(table_name: str, pk_name: str, pk_value: str, reque
         return {"message": f"Record updated in {table_name} where {pk_name}={pk_value}."}
     except SQLAlchemyError as e:
         session.rollback()
+        print(str(e))
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()

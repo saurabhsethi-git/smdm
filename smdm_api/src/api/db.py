@@ -234,12 +234,13 @@ async def insert_record(table_name: str, request: Request, app: str):
         columns = ', '.join(data.keys())
         values_placeholders = ', '.join([f":{key}" for key in data.keys()])
         insert_query = text(f"INSERT INTO {table_name} ({columns}) VALUES ({values_placeholders})")
+        print(insert_query)
         session.execute(insert_query, data)
         session.commit()
 
-        cache_delete_pattern(f"entity_records:{table_name}:*")
-        cache_delete_pattern(f"entity_all:{table_name}:*")
-        cache_delete_pattern(f"entity:{table_name}:*")
+        cache_delete_pattern(f"entity_records:{table_name}/*")
+        cache_delete_pattern(f"entity_records:{table_name}:pk:*")
+        cache_delete_pattern(f"entity_all:{table_name}/*")
 
         return {"message": f"Record inserted into {table_name}."}
     except SQLAlchemyError as e:
@@ -257,9 +258,9 @@ async def delete_record(table_name: str, pk_name: str, pk_value: str, app: str):
         result = session.execute(delete_query, {"pk_value": pk_value})
         session.commit()
 
-        cache_delete_pattern(f"entity_records:{table_name}:*")
-        cache_delete_pattern(f"entity_all:{table_name}:*")
-        cache_delete_pattern(f"entity:{table_name}:*")
+        cache_delete_pattern(f"entity_records:{table_name}/*")
+        cache_delete_pattern(f"entity_records:{table_name}:pk:*")
+        cache_delete_pattern(f"entity_all:{table_name}/*")
 
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Record not found")
@@ -287,9 +288,9 @@ async def update_record(table_name: str, pk_name: str, pk_value: str, request: R
         result = session.execute(update_query, params)
         session.commit()
 
-        cache_delete_pattern(f"entity_records:{table_name}:*")
-        cache_delete_pattern(f"entity_all:{table_name}:*")
-        cache_delete_pattern(f"entity:{table_name}:*")
+        cache_delete_pattern(f"entity_records:{table_name}/*")
+        cache_delete_pattern(f"entity_records:{table_name}:pk:*")
+        cache_delete_pattern(f"entity_all:{table_name}/*")
 
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Record not found")
