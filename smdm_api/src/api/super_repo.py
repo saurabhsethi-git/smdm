@@ -40,7 +40,6 @@ async def list_app_details():
     cached = cache_get(cache_key)
     if cached is not None:
         return {"records": cached}
-
     session = get_super_repo_session()
     try:
         query = text("SELECT repo_id, repo_name, app_name, last_updated FROM sy_repo_details")
@@ -133,15 +132,15 @@ async def update_app_details(repo_id: str, request: Request):
 
 @router.post("/{app}/setuprepo/")
 async def setup_repo(app: str):
-    source_engine = create_engine((get_repo_db_session.__module__ and "") or "")
+    #source_engine = create_engine((get_repo_db_session.__module__ and "") or "")
     # Create engine and session for source DB (use DB_URL+app in caller environment)
-    source_engine = create_engine(get_repo_db_session.__defaults__[0] if False else None) if False else None
+    #source_engine = create_engine(get_repo_db_session.__defaults__[0] if False else None) if False else None
     # To avoid duplicating logic here we will recreate the original behavior using DB URL from common
     from .common import DB_URL
     source_engine = create_engine(DB_URL + app)
     SourceSession = sessionmaker(autocommit=False, autoflush=False, bind=source_engine)
     source_session = SourceSession()
-
+    
     repo_db = app + "_repo"
     repo_session = get_repo_db_session(repo_db)
     super_repo_session = get_super_repo_session()
